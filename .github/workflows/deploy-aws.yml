@@ -1,0 +1,68 @@
+name: Deploy SIMS to AWS
+on:
+  push:
+    branches: [master]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-central-1
+  ECS_CLUSTER: sims-cluster
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::510295453757:role/gha-sims-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push API image
+        env:
+          REG: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker buildx build --platform linux/arm64 \
+            -f simsdemo/SIMSAPI/Dockerfile \
+            -t $REG/api:$TAG -t $REG/api:latest \
+            --push simsdemo/SIMSAPI
+
+      - name: Build & push WebApp image
+        env:
+          REG: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker buildx build --platform linux/arm64 \
+            -f simsdemo/SIMS/Dockerfile \
+            -t $REG/webapp:$TAG -t $REG/webapp:latest \
+            --push simsdemo/SIMS
+
+      - name: Deploy API service
+        run: |
+          aws ecs update-service --cluster $ECS_CLUSTER \
+            --service sims-api-svc --force-new-deployment
+
+      - name: Deploy WebApp service
+        run: |
+          aws ecs update-service --cluster $ECS_CLUSTER \
+            --service sims-webapp-svc --force-new-deployment
+
+      - name: Wait for API stable
+        run: |
+          aws ecs wait services-stable --cluster $ECS_CLUSTER --services sims-api-svc
+
+      - name: Wait for WebApp stable
+        run: |
+          aws ecs wait services-stable --cluster $ECS_CLUSTER --services sims-webapp-svc
