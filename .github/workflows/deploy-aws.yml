@@ -57,7 +57,7 @@ jobs:
       - name: Deploy WebApp service
         run: |
           aws ecs update-service --cluster $ECS_CLUSTER \
-            --service sims-webapp-svc --force-new-deployment
+            --service sims-frontend-svc --force-new-deployment
 
       - name: Wait for API stable
         run: |
