@@ -59,10 +59,10 @@ jobs:
           aws ecs update-service --cluster $ECS_CLUSTER \
             --service sims-frontend-svc --force-new-deployment
 
-      - name: Wait for API stable
-        run: |
-          aws ecs wait services-stable --cluster $ECS_CLUSTER --services sims-api-svc
+     # - name: Wait for API stable
+     #   run: |
+      #    aws ecs wait services-stable --cluster $ECS_CLUSTER --services sims-api-svc
 
-      - name: Wait for WebApp stable
-        run: |
-          aws ecs wait services-stable --cluster $ECS_CLUSTER --services sims-webapp-svc
+      #- name: Wait for WebApp stable
+      #  run: |
+       #   aws ecs wait services-stable --cluster $ECS_CLUSTER --services sims-frontend-svc
